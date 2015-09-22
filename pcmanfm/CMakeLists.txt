@@ -50,6 +50,10 @@ set(pcmanfm_UIS
     autorun.ui
 )
 
+if (EDIT_DESKTOP_FOLDER)
+    list(APPEND pcmanfm_UIS "desktop-folder.ui")
+endif()
+
 qt5_wrap_ui(pcmanfm_UIS_H ${pcmanfm_UIS})
 
 # add translation for pcmanfm-qt
@@ -78,6 +82,10 @@ set_property(
      PCMANFM_DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/pcmanfm-qt"
      LIBFM_DATA_DIR="${LIBFM_PREFIX}/share/libfm" # This is a little bit dirty
      PCMANFM_QT_VERSION="${PCMANFM_QT_VERSION}"
+)
+
+target_compile_definitions(pcmanfm-qt
+    PRIVATE "$<$<BOOL:${EDIT_DESKTOP_FOLDER}>:EDIT_DESKTOP_FOLDER>"
 )
 
 target_link_libraries(pcmanfm-qt

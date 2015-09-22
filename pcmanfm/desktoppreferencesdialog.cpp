@@ -41,6 +41,13 @@ DesktopPreferencesDialog::DesktopPreferencesDialog(QWidget* parent, Qt::WindowFl
   Settings& settings = static_cast<Application*>(qApp)->settings();
   ui.setupUi(this);
 
+#ifdef EDIT_DESKTOP_FOLDER
+  QWidget *desktopFolderWidget = new QWidget();
+  uiDesktopFolder.setupUi(desktopFolderWidget);
+  ui.advancedPageLayout->insertWidget(1, desktopFolderWidget);
+  uiDesktopFolder.verticalLayout->setMargin(0);
+#endif
+
   // setup wallpaper modes
   connect(ui.wallpaperMode, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &DesktopPreferencesDialog::onWallpaperModeChanged);
   ui.wallpaperMode->addItem(tr("Fill with background color only"), DesktopWindow::WallpaperNone);
@@ -74,10 +81,13 @@ DesktopPreferencesDialog::DesktopPreferencesDialog(QWidget* parent, Qt::WindowFl
   qDebug("wallpaper: %s", settings.wallpaper().toUtf8().data());
   ui.imageFile->setText(settings.wallpaper());
 
-  connect(ui.browseDesktopFolder, &QPushButton::clicked, this, &DesktopPreferencesDialog::onBrowseDesktopFolderClicked);
   QString desktopFolder = XdgDir::readDesktopDir();
   qDebug("desktop folder: %s", desktopFolder.toStdString().c_str());
-  ui.desktopFolder->setText(desktopFolder);
+
+#ifdef EDIT_DESKTOP_FOLDER
+  connect(uiDesktopFolder.browseDesktopFolder, &QPushButton::clicked, this, &DesktopPreferencesDialog::onBrowseDesktopFolderClicked);
+  uiDesktopFolder.desktopFolder->setText(desktopFolder);
+#endif
 
   ui.font->setFont(settings.desktopFont());
 
@@ -92,8 +102,9 @@ DesktopPreferencesDialog::~DesktopPreferencesDialog() {
 
 void DesktopPreferencesDialog::accept() {
   Settings& settings = static_cast<Application*>(qApp)->settings();
-
-  XdgDir::setDesktopDir(ui.desktopFolder->text());
+#ifdef EDIT_DESKTOP_FOLDER
+  XdgDir::setDesktopDir(uiDesktopFolder.desktopFolder->text());
+#endif
 
   settings.setWallpaper(ui.imageFile->text());
   int mode = ui.wallpaperMode->itemData(ui.wallpaperMode->currentIndex()).toInt();
@@ -143,17 +154,20 @@ void DesktopPreferencesDialog::onBrowseClicked() {
   }
 }
 
+#ifdef EDIT_DESKTOP_FOLDER
 void DesktopPreferencesDialog::onBrowseDesktopFolderClicked()
 {
   QFileDialog dlg;
+  dlg.setAcceptMode(QFileDialog::AcceptOpen);
   dlg.setAcceptMode(QFileDialog::AcceptOpen);
   dlg.setFileMode(QFileDialog::DirectoryOnly);
   if (dlg.exec() == QDialog::Accepted) {
     QString dir;
     dir = dlg.selectedFiles().first();
-    ui.desktopFolder->setText(dir);
+    uiDesktopFolder.desktopFolder->setText(dir);
   }
 }
+#endif
 
 void DesktopPreferencesDialog::selectPage(QString name) {
   QWidget* page = findChild<QWidget*>(name + "Page");

@@ -24,6 +24,10 @@
 #include <QDialog>
 #include "ui_desktop-preferences.h"
 
+#ifdef EDIT_DESKTOP_FOLDER
+#include "ui_desktop-folder.h"
+#endif
+
 namespace PCManFM {
 
 class DesktopPreferencesDialog : public QDialog {
@@ -40,10 +44,15 @@ public:
 protected Q_SLOTS:
   void onWallpaperModeChanged(int index);
   void onBrowseClicked();
+#ifdef EDIT_DESKTOP_FOLDER
   void onBrowseDesktopFolderClicked();
+#endif
 
 private:
   Ui::DesktopPreferencesDialog ui;
+#ifdef EDIT_DESKTOP_FOLDER
+  Ui::DesktopFolder uiDesktopFolder;
+#endif
 };
 
 }
