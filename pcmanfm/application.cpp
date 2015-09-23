@@ -49,6 +49,11 @@
 
 #include <X11/Xlib.h>
 
+#ifndef EDIT_DESKTOP_FOLDER
+#include "xdgdir.h"
+#include <QFileSystemWatcher>
+#endif
+
 using namespace PCManFM;
 static const char* serviceName = "org.pcmanfm.PCManFM";
 static const char* ifaceName = "org.pcmanfm.Application";
@@ -70,6 +75,9 @@ Application::Application(int& argc, char** argv):
   enableDesktopManager_(false),
   preferencesDialog_(),
   volumeMonitor_(NULL),
+#ifndef EDIT_DESKTOP_FOLDER
+  userDirsWatcher_(NULL),
+#endif
   editBookmarksialog_() {
 
   argc_ = argc;
@@ -98,6 +106,11 @@ Application::Application(int& argc, char** argv):
       QIcon::setThemeName(settings_.fallbackIconThemeName());
       Fm::IconTheme::checkChanged();
     }
+
+#ifndef EDIT_DESKTOP_FOLDER
+    userDesktopFolder_ = XdgDir::readDesktopDir();
+    initWatch();
+#endif
   }
   else {
     // an service of the same name is already registered.
@@ -117,6 +130,23 @@ Application::~Application() {
   // if(enableDesktopManager_)
   //   removeNativeEventFilter(this);
 }
+
+#ifndef EDIT_DESKTOP_FOLDER
+void Application::initWatch()
+{
+  QFile file_ (QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/user-dirs.dirs"));
+  if(! file_.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << Q_FUNC_INFO << "Could not read: " << userDirsFile_;
+    userDirsFile_ = QString();
+  } else {
+    userDirsFile_ = file_.fileName();
+  }
+
+  userDirsWatcher_ = new QFileSystemWatcher(this);
+  userDirsWatcher_->addPath(userDirsFile_);
+  connect(userDirsWatcher_, &QFileSystemWatcher::fileChanged, this, &Application::onUserDirsChanged);
+}
+#endif
 
 bool Application::parseCommandLineArgs() {
   bool keepRunning = false;
@@ -281,6 +311,33 @@ int Application::exec() {
 
   return QCoreApplication::exec();
 }
+
+
+#ifndef EDIT_DESKTOP_FOLDER
+void Application::onUserDirsChanged()
+{
+  bool file_deleted = !userDirsWatcher_->files().contains(userDirsFile_);
+  if(file_deleted) {
+    // if our config file is already deleted, reinstall a new watcher
+    userDirsWatcher_->addPath(userDirsFile_);
+  }
+
+  const QString d = XdgDir::readDesktopDir();
+  if (d != userDesktopFolder_) {
+    userDesktopFolder_ = d;
+    const QDir dir(d);
+    if (dir.exists()) {
+      const int N = desktopWindows_.size();
+      for(int i = 0; i < N; ++i) {
+        desktopWindows_.at(i)->setDesktopFolder();
+      }
+    } else {
+        qWarning("Application::onUserDirsChanged: %s doesn't exist",
+                    qUtf8Printable(userDesktopFolder_));
+    }
+  }
+}
+#endif
 
 void Application::onAboutToQuit() {
   qDebug("aboutToQuit");
